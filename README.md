@@ -70,12 +70,34 @@ mise exec -- trivy image --scanners vuln hello-world:local
 
 ### GitHub Actions
 
-- Pull Request と `main` ブランチへの push で、Dockerfile スキャン、lint、test を実行します。
-- これらが成功した場合、コミット SHA をタグにしたコンテナイメージを tar 形式でビルドし、脆弱性をスキャンします。
-- Pull Request ではスキャンまで実行し、`main` ブランチへの push ではスキャンに成功したイメージだけを `ghcr.io/<owner>/<repository>` へ push します。
+- Pull Request と `main` ブランチへの push で、Dockerfile スキャン、lint、test、イメージのビルドと脆弱性スキャンを実行します。
+- `main` ブランチへの push では、スキャンに成功したイメージをコミット SHA タグで `ghcr.io/<owner>/<repository>` へ push します。
+- `v` で始まる Git タグの push では、既に GHCR にあるコミット SHA タグのイメージを使い、Git タグ名と `latest` のタグを付けて push します。この場合、イメージのビルドとスキャンは実行しません。
 - `mise-action` が [`mise.toml`](mise.toml) の Go バージョンを使い、Dockerfile のビルド用 Go バージョンにも渡します。
 - Trivy のバージョンも [`mise.toml`](mise.toml) で管理します。
 - GHCR への認証には `GITHUB_TOKEN` を使います。ワークフローに `packages: write` 権限を設定しています。
+
+## 7.1.2.7 本番環境へリリース可能なイメージタグを作成
+
+`main` ブランチへの push で公開した SHA タグ付きイメージに、Git のバージョンタグと `latest` を付けます。タグを付けるコミットは、`main` の CI が成功し、SHA タグのイメージが GHCR に公開済みである必要があります。
+
+例えば、`main` の最新コミットに `v1.0.0` タグを付けて push します。
+
+```bash
+git switch main
+git pull --ff-only
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+タグの push で `tag-image` ジョブが実行され、同じイメージを次のタグ名で GHCR に公開します。
+
+```text
+ghcr.io/<owner>/<repository>:v1.0.0
+ghcr.io/<owner>/<repository>:latest
+```
+
+`latest` は最後に実行されたタグのイメージを指します。
 
 ## kind クラスタへのデプロイ
 
