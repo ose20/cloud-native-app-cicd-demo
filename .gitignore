@@ -1,0 +1,8 @@
+app
+coverage.txt
+coverage.xml
+coverprofile.txt
+coverprofile.xml
+gl-code-quality-report.json
+junit-report.xml
+report.xml
