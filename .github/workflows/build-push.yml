@@ -54,7 +54,7 @@ jobs:
         uses: jdx/mise-action@v4
 
       - name: Run golangci-lint
-        run: golangci-lint run --out-format github-actions ./...
+        run: golangci-lint run ./...
 
   test:
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
