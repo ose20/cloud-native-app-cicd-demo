@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: ghcr.io/ose20/cloud-native-app-cicd-demo
+    newTag: "4f6b7cee2480a1780d256a4a4fb234c36fcaf6ff"

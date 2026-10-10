@@ -99,26 +99,65 @@ ghcr.io/<owner>/<repository>:latest
 
 `latest` は最後に実行されたタグのイメージを指します。
 
-## kind クラスタへのデプロイ
+## Kubernetes マニフェスト
 
-[`k8s/hello-world.yaml`](k8s/hello-world.yaml) は、GitHub Actions が公開したコミット SHA タグのイメージを使う Deployment と Service の例です。別のイメージを使う場合は、`image:` のタグをそのコミット SHA に置き換えてください。
+アプリケーションの Kubernetes マニフェストは Kustomize で管理します。[`k8s/base/`](k8s/base/) に Namespace・Deployment・Service を置き、[`k8s/overlays/kind/`](k8s/overlays/kind/) で kind クラスタ用のイメージタグを指定しています。
+
+適用前に、Kustomize が生成するマニフェストを確認できます。
 
 ```bash
-kubectl apply -f k8s/hello-world.yaml
-kubectl rollout status deployment/hello-world -n hello-world
+kubectl kustomize k8s/overlays/kind
+```
+
+この overlay を kind クラスタへ適用する方法は、次の 7.2.4 で説明します。Argo CD に登録した後は Argo CD が状態を管理するため、`kubectl apply` による変更を重ねないでください。
+
+## 7.2.3.2 Argo CD のセットアップ
+
+既存の Kubernetes クラスタへ Argo CD を Helmfile でインストールします。手順と設定ファイルは [`platform/argocd/README.md`](platform/argocd/README.md) にあります。この設定は Argo CD のセットアップ用で、アプリケーションの CI ワークフローには含めていません。
+
+## 7.2.4 Argo CD による GitOps デプロイ
+
+7.2.3.2 でインストールした Argo CD に、このリポジトリのアプリケーションを登録します。Argo CD は `main` ブランチの [`k8s/overlays/kind/`](k8s/overlays/kind/) を監視し、Namespace・Deployment・Service を kind クラスタへ同期します。
+
+### 前提条件
+
+- Argo CD が kind クラスタで起動していること
+- `kubectl` の context がその kind クラスタを指していること
+- Argo CD から GitHub リポジトリを読み取れること
+- kind クラスタから GHCR のイメージを取得できること
+
+公開リポジトリであれば GitHub の認証情報は不要です。非公開リポジトリの場合は、読み取り用の認証情報を Argo CD に登録してください。認証情報を YAML や Git に保存しないでください。
+
+GHCR パッケージが非公開の場合は、GitHub のリポジトリ認証とは別に、kind クラスタが使う `imagePullSecret` が必要です。Actions の `GITHUB_TOKEN` はワークフローのジョブ内だけで使えるため、クラスタでは再利用できません。パッケージが公開されている場合、この設定は不要です。
+
+### Application の登録
+
+[`platform/argocd/apps/hello-world.yaml`](platform/argocd/apps/hello-world.yaml) が Argo CD の Application 定義です。Argo CD をインストールした後、次を一度実行します。
+
+Application 自体は Argo CD の監視対象パスの外にあるため、この `kubectl apply` が初回登録の操作です。以後、Application が監視するアプリケーションの Kubernetes マニフェストは Git の push に応じて同期されます。
+
+```bash
+kubectl apply -f platform/argocd/apps/hello-world.yaml
+kubectl get application hello-world -n argocd
+kubectl get pods -n hello-world --watch
+```
+
+Application の自動同期が有効なため、Argo CD は Git のマニフェストとクラスタの状態を合わせます。`selfHeal` はクラスタ上で直接変更したリソースを Git の内容へ戻し、`prune` は Git から削除されたリソースをクラスタからも削除します。
+
+Pod が起動したら、Service にポートフォワードしてアプリケーションを確認します。
+
+```bash
 kubectl port-forward -n hello-world service/hello-world 18080:8080
 ```
 
-`port-forward` を実行したまま、別のターミナルからアクセスします。
+別のターミナルからアクセスします。
 
 ```bash
 curl http://localhost:18080/
 ```
 
-GHCR パッケージが非公開の場合、kind クラスタからイメージを取得するために `imagePullSecret` が必要です。Actions の `GITHUB_TOKEN` はワークフローのジョブ内でのみ使えるため、ローカルのクラスタでは再利用できません。
+### イメージを更新する
 
-削除する場合は次を実行します。
+GitHub Actions は `main` への push ごとにコミット SHA タグのイメージを GHCR へ公開します。CI の成功後、[`k8s/overlays/kind/kustomization.yaml`](k8s/overlays/kind/kustomization.yaml) の `newTag` を、公開済みイメージのコミット SHA に変更して push します。Argo CD が Git の変更を検出し、新しいイメージへ Deployment を更新します。
 
-```bash
-kubectl delete -f k8s/hello-world.yaml
-```
+CI はイメージを公開しますが、Kustomize のタグは自動更新しません。どのイメージをデプロイするかも Git の変更として管理するためです。

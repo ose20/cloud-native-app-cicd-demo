@@ -10,3 +10,4 @@ image.tar
 trivy-config-report.json
 trivy-image-report.json
 .trivycache/
+*.pdf

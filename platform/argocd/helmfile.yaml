@@ -1,0 +1,20 @@
+repositories:
+  - name: argo
+    url: https://argoproj.github.io/argo-helm
+
+environments:
+  dev: {}
+  prod: {}
+
+---
+
+releases:
+  - name: argocd
+    namespace: argocd
+    atomic: true
+    createNamespace: true
+    timeout: 600
+    chart: argo/argo-cd
+    version: "10.10.2"
+    values:
+      - environments/{{ .Environment.Name }}/values.yaml
