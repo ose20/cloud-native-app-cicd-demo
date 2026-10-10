@@ -6,3 +6,7 @@ coverprofile.xml
 gl-code-quality-report.json
 junit-report.xml
 report.xml
+image.tar
+trivy-config-report.json
+trivy-image-report.json
+.trivycache/
