@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,7 +10,7 @@ import (
 
 func TestHelloWorld(t *testing.T) {
 	reqBody := bytes.NewBufferString("dummy")
-	req := httptest.NewRequest(http.MethodGet, "https://sample.com/", reqBody)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "https://sample.com/", reqBody)
 	res := httptest.NewRecorder()
 
 	helloWorld(res, req)
