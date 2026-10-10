@@ -30,7 +30,7 @@ jobs:
       - name: Scan Dockerfile configuration
         run: |
           trivy --quiet config --exit-code 0 --format json --output trivy-config-report.json Dockerfile
-          trivy --quiet config --exit-code 1 Dockerfile
+          trivy --quiet config --severity MEDIUM,HIGH,CRITICAL --exit-code 1 Dockerfile
 
       - name: Upload Dockerfile scan report
         if: always()

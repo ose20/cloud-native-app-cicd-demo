@@ -50,7 +50,7 @@ mise exec -- golangci-lint run ./...
 
 ## 7.1.2.5 Dockerfile スキャン
 
-Trivy で Dockerfile の設定を検査し、結果を `trivy-config-report` アーティファクトに保存します。検出した設定上の問題がある場合は、ビルドへ進みません。
+Trivy で Dockerfile の設定を検査し、結果を `trivy-config-report` アーティファクトに保存します。LOW の指摘はレポートに残し、MEDIUM 以上の指摘がある場合はビルドへ進みません。
 
 ローカルで確認する場合は次を実行します。
 
