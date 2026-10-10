@@ -2,3 +2,6 @@
 .github
 *.md
 mise.toml
+.trivycache
+image.tar
+trivy-*-report.json

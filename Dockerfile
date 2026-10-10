@@ -1,4 +1,5 @@
-FROM golang:1.19.2-alpine3.16 AS build
+ARG GO_VERSION
+FROM golang:${GO_VERSION}-alpine3.16 AS build
 WORKDIR /build
 COPY . .
 RUN CGO_ENABLED=0 go build -ldflags '-s -w' -trimpath -o app -a main.go
