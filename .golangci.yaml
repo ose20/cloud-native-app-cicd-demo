@@ -7,11 +7,19 @@ run:
   modules-download-mode: readonly
   allow-parallel-runners: true
   # Keep the module's Go language version from go.mod.
-  go: "1.19"
+  go: "1.27"
 
 linters:
   # v1 config used enable-all: true.
   default: all
+  enable:
+    - exhaustruct_v5
+    - gomodguard_v2
+    - wsl_v5
+  disable:
+    - exhaustruct
+    - gomodguard
+    - wsl
   exclusions:
     # Keep the v1 default exclusion behavior.
     generated: lax
@@ -37,6 +45,11 @@ linters:
       - linters:
           - lll
         source: "^//go:generate "
+  settings:
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
 
 # These were linters in v1 and were enabled by enable-all.
 formatters:
