@@ -141,6 +141,9 @@ jobs:
     env:
       MISE_ENABLE_TOOLS: trivy
     steps:
+      - name: Check out mise configuration
+        uses: actions/checkout@v7
+
       - name: Download container image
         uses: actions/download-artifact@v8
         with:
