@@ -1,0 +1,23 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: hello-world
+  namespace: progressive-delivery
+spec:
+  hosts:
+    - hello-world.local
+  gateways:
+    - hello-world-gateway
+  http:
+    - name: primary
+      route:
+        - destination:
+            host: hello-world-stable.progressive-delivery.svc.cluster.local
+            port:
+              number: 8080
+          weight: 100
+        - destination:
+            host: hello-world-canary.progressive-delivery.svc.cluster.local
+            port:
+              number: 8080
+          weight: 0

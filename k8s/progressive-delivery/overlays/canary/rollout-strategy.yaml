@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: hello-world
+  namespace: progressive-delivery
+spec:
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "true"
+  strategy:
+    canary:
+      stableService: hello-world-stable
+      canaryService: hello-world-canary
+      trafficRouting:
+        istio:
+          virtualService:
+            name: hello-world
+            routes:
+              - primary
+      analysis:
+        startingStep: 2
+        templates:
+          - templateName: success-rate
+        args:
+          - name: service-name
+            value: hello-world-canary.progressive-delivery.svc.cluster.local
+      steps:
+        - setWeight: 20
+        - pause:
+            duration: 60s
+        - setWeight: 50
+        - pause:
+            duration: 60s
+        - setWeight: 80
+        - pause:
+            duration: 60s
+        - setWeight: 100
+      maxSurge: 25%
+      maxUnavailable: 0

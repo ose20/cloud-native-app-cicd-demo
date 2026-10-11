@@ -10,17 +10,24 @@ import (
 
 const TIMEOUT time.Duration = 3 * time.Second
 
+var version = "dev"
+
 func helloWorld(responseWriter http.ResponseWriter, request *http.Request) {
 	err := request.ParseForm()
 	if err != nil {
 		log.Fatal("Parse Error")
 	}
 
-	fmt.Fprintf(responseWriter, "hello world")
+	fmt.Fprintf(responseWriter, "hello world: %s", version)
+}
+
+func errorResponse(responseWriter http.ResponseWriter, _ *http.Request) {
+	http.Error(responseWriter, "intentional failure", http.StatusServiceUnavailable)
 }
 
 func main() {
 	http.HandleFunc("/", helloWorld)
+	http.HandleFunc("/error", errorResponse)
 
 	server := &http.Server{
 		Addr:                         ":8080",

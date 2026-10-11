@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: hello-world
+  namespace: progressive-delivery
+spec:
+  strategy:
+    blueGreen:
+      activeService: hello-world-active
+      previewService: hello-world-preview
+      autoPromotionEnabled: true
+      prePromotionAnalysis:
+        templates:
+          - templateName: e2e-smoke
+        args:
+          - name: service-url
+            value: http://hello-world-preview.progressive-delivery.svc.cluster.local:8080
+      scaleDownDelaySeconds: 30

@@ -122,6 +122,7 @@ jobs:
           outputs: type=docker,dest=${{ runner.temp }}/image.tar
           build-args: |
             GO_VERSION=${{ steps.go-version.outputs.version }}
+            APP_VERSION=${{ github.sha }}
 
       - name: Upload container image
         uses: actions/upload-artifact@v7

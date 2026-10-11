@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: progressive-delivery
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ose20/cloud-native-app-cicd-demo.git
+    targetRevision: main
+    path: k8s/progressive-delivery/overlays/canary
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: progressive-delivery
+  ignoreDifferences:
+    - group: ""
+      kind: Service
+      name: hello-world-stable
+      namespace: progressive-delivery
+      jsonPointers:
+        - /spec/selector
+    - group: ""
+      kind: Service
+      name: hello-world-canary
+      namespace: progressive-delivery
+      jsonPointers:
+        - /spec/selector
+    - group: ""
+      kind: Service
+      name: hello-world-active
+      namespace: progressive-delivery
+      jsonPointers:
+        - /spec/selector
+    - group: ""
+      kind: Service
+      name: hello-world-preview
+      namespace: progressive-delivery
+      jsonPointers:
+        - /spec/selector
+    - group: networking.istio.io
+      kind: VirtualService
+      name: hello-world
+      namespace: progressive-delivery
+      jqPathExpressions:
+        - .spec.http[].route[].weight
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true

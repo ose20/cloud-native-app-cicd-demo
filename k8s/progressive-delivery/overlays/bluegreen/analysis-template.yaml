@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: e2e-smoke
+  namespace: progressive-delivery
+spec:
+  args:
+    - name: service-url
+  metrics:
+    - name: api-smoke-test
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            ttlSecondsAfterFinished: 60
+            template:
+              metadata:
+                annotations:
+                  sidecar.istio.io/inject: "false"
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: api-smoke-test
+                    image: curlimages/curl:8.21.0
+                    command:
+                      - /bin/sh
+                      - -ec
+                    args:
+                      - |
+                        base_url="$1"
+                        root_response="$(curl --fail --silent --show-error --max-time 10 "${base_url}/")"
+                        printf '%s' "$root_response" | grep -Fq 'hello world:'
+                        error_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 10 "${base_url}/error")"
+                        test "$error_status" = "503"
+                      - --
+                      - "{{args.service-url}}"
+                    resources:
+                      requests:
+                        cpu: 50m
+                        memory: 32Mi
+                      limits:
+                        memory: 64Mi
