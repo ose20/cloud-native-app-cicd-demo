@@ -5,4 +5,4 @@ resources:
   - rollout.yaml
 images:
   - name: ghcr.io/ose20/cloud-native-app-cicd-demo
-    newTag: "4f6b7cee2480a1780d256a4a4fb234c36fcaf6ff"
+    newTag: "v0.1.2"
