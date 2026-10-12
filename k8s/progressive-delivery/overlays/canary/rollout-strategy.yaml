@@ -14,12 +14,15 @@ spec:
       canaryService: hello-world-canary
       trafficRouting:
         istio:
-          virtualService:
-            name: hello-world
-            routes:
-              - primary
+          virtualServices:
+            - name: hello-world
+              routes:
+                - primary
+            - name: hello-world-mesh
+              routes:
+                - internal
       analysis:
-        startingStep: 2
+        startingStep: 0
         templates:
           - templateName: success-rate
         args:

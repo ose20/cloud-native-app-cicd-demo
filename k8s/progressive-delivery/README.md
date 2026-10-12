@@ -6,7 +6,7 @@
 
 |方式 | トラフィックと判定 |
 |---|---|
-|Canary | Istioで新バージョンへの割合を20%、50%、80%、100%と上げます。Prometheusの成功率が95%以上かを30秒ごとに測り、失敗測定が3回になるとRolloutを中止します。 |
+|Canary | IstioでIngressとクラスタ内通信の両方を新バージョンへ20%、50%、80%、100%と振り分けます。Prometheusの成功率が95%以上かを30秒ごとに測り、失敗測定が3回になるとRolloutを中止します。 |
 |BlueGreen | 旧バージョンをactiveServiceで提供したまま、新バージョンをpreviewServiceで起動します。イメージ更新時にKubernetes Jobがpreviewへアクセスし、/が200、/errorが503であることを確認します。Job成功後に自動で切り替えます。 |
 
 Argo Rolloutsのコントローラーは両方式を扱いますが、一つのRolloutで有効にする方式は一つです。Canaryは実トラフィックのメトリクスを観察し、BlueGreenは切替前に指定したテストを実行します。
@@ -42,6 +42,8 @@ Application登録後、Argo CDがRollout、Services、Istioリソースを同期
 
 Canaryを使うときは、Prometheusが判定できるようリクエストを継続して送ります。最初のRollout作成時には旧バージョンとの比較がないため、Canaryの段階的更新は、二つ目以降のイメージ更新で確認できます。
 
+Canaryのトラフィックルーティングは、Ingress Gateway用の[VirtualService](overlays/canary/virtual-service.yaml)と、メッシュ内通信用の[VirtualService](overlays/canary/mesh-virtual-service.yaml)に分けています。Argo Rolloutsは両方のweightを同時に更新します。クラスタ内の呼び出し元はstable ServiceのFQDNを使い、Istioのサイドカーを経由してアクセスします。Canary Serviceを呼び出し元に直接指定する必要はありません。
+
 まず別のターミナルでIstio Ingress Gatewayをローカルへ転送します。
 
     kubectl port-forward -n istio-system service/istio-ingressgateway 18080:80
@@ -58,6 +60,33 @@ Rolloutの状態とAnalysisRunを確認します。
     kubectl argo rollouts get rollout hello-world -n progressive-delivery --watch
     kubectl get analysisruns -n progressive-delivery
     kubectl get virtualservice hello-world -n progressive-delivery -o yaml
+    kubectl get virtualservice hello-world-mesh -n progressive-delivery -o yaml
+
+Argo CDの画面から見る場合は、Applicationのリソースツリーで`hello-world`のRolloutを開き、Rollout Extensionのタブを選びます。Extensionの導入方法は[Argo CDのセットアップ](../../platform/argocd/README.md)を参照してください。
+
+クラスタ内の呼び出し元PodからCanaryの振り分けを確認する場合は、progressive-delivery namespaceに一時的なcurl Podを作ります。namespaceのsidecar injectionが有効なため、このPodもメッシュに参加します。
+
+    kubectl run internal-caller -n progressive-delivery \
+      --image=curlimages/curl:8.21.0 \
+      --restart=Never --command -- sleep 3600
+    kubectl wait --for=condition=Ready pod/internal-caller \
+      -n progressive-delivery --timeout=120s
+
+Canaryが20%の段階にいる間に、stable ServiceのFQDNへ100回アクセスします。応答のバージョンごとの件数を確認できます。
+
+    kubectl exec -n progressive-delivery internal-caller -- sh -c '
+    i=0
+    while [ "$i" -lt 100 ]; do
+      curl --fail --silent --show-error \
+        http://hello-world-stable.progressive-delivery.svc.cluster.local:8080/
+      printf "\n"
+      i=$((i + 1))
+    done
+    ' | sort | uniq -c
+
+Canaryの応答が約20%含まれていれば、内部呼び出しもVirtualServiceの重み付けを通っています。100回では割合にばらつきが出ます。確認後は一時Podを削除します。
+
+    kubectl delete pod internal-caller -n progressive-delivery
 
 /errorへリクエストすると、カナリア側の成功率を下げて自動中止を確認できます。正常リクエストの送信を止めるとメトリクス不足で失敗判定になる場合があるため、検証中はリクエストを継続してください。
 

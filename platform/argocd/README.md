@@ -8,6 +8,8 @@
 
 Helm と Helmfile のバージョンは、リポジトリ直下の [`mise.toml`](../../mise.toml) で固定します。Helm の差分表示に使う helm-diff plugin は `3.15.15`、Argo CD Helm chart は `10.10.2` です。この chart がインストールする Argo CD は `3.5.4` です。chart のソースは [argoproj/argo-helm](https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd) で確認できます。
 
+Argo CD の画面で Rollout の進行を確認できるよう、[Rollout Extension](https://github.com/argoproj-labs/rollout-extension) `v0.4.0` を `server.extensions` から導入します。`v0.4.0` 以降は Argo CD `3.5` 以降が必要です。dev/prod のどちらにも同じ設定を入れているため、Helmfile の適用後、Argo CD の Application 画面で Rollout リソースを開くと拡張 UI を利用できます。Rollout の進行制御やメトリクス分析は引き続き Argo Rollouts と Prometheus が担当します。
+
 ## 前提条件
 
 - mise がインストールされていること

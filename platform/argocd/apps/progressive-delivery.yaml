@@ -45,6 +45,12 @@ spec:
       namespace: progressive-delivery
       jqPathExpressions:
         - .spec.http[].route[].weight
+    - group: networking.istio.io
+      kind: VirtualService
+      name: hello-world-mesh
+      namespace: progressive-delivery
+      jqPathExpressions:
+        - .spec.http[].route[].weight
   syncPolicy:
     automated:
       prune: true
