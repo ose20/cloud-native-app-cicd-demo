@@ -4,4 +4,4 @@ resources:
   - ../../base
 images:
   - name: ghcr.io/ose20/cloud-native-app-cicd-demo
-    newTag: "v0.1.2"
+    newTag: "v0.1.3"
