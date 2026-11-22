@@ -1,0 +1,35 @@
+server:
+  retention: 24h
+  persistentVolume:
+    enabled: false
+  emptyDir:
+    sizeLimit: 2Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+# 学習用: 5分窓のCPU使用率が50%を超え、その状態が5分続いた場合に発火する。
+serverFiles:
+  alerting_rules.yml:
+    groups:
+      - name: node-health
+        rules:
+          - alert: NodeCpuUsageHigh
+            expr: >-
+              100 * (
+                1 - avg by (node) (
+                  rate(node_cpu_seconds_total{
+                    job="node-exporter",
+                    mode="idle"
+                  }[5m])
+                )
+              ) > 50
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Node CPU usage is high on {{ $labels.node }}"
+              description: "Node CPU usage has remained above the configured threshold for 5 minutes."

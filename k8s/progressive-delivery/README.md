@@ -13,14 +13,14 @@ Argo Rolloutsのコントローラーは両方式を扱いますが、一つのR
 
 初回のRollout作成には切り替え元のバージョンがありません。Canaryの段階的なトラフィック移行とBlueGreenの切替前Analysisは、次回以降のイメージ更新で確認できます。
 
-アプリは/でビルドしたコミットSHAを返し、/errorで意図的に503を返します。BlueGreenのJobはこの二つの応答を確認します。E2Eテストを増やす場合は、[overlays/bluegreen/analysis-template.yaml](overlays/bluegreen/analysis-template.yaml)のJobをテストランナーに置き換えてください。
+アプリは/でビルドしたコミットSHAを返し、/errorで意図的に503を返し、/metricsでPrometheus用のHTTP要求指標を公開します。BlueGreenのJobは前二つの応答を確認します。E2Eテストを増やす場合は、[overlays/bluegreen/analysis-template.yaml](overlays/bluegreen/analysis-template.yaml)のJobをテストランナーに置き換えてください。
 
 ## 一度だけ行うセットアップ
 
 初回セットアップはクラスタ単位で行います。
 
 1. [Argo RolloutsのコントローラーとCRD](../../platform/argo-rollouts/README.md)をHelmfileでインストールする。
-2. Canaryを使う場合、IstioとPrometheusを用意する。
+2. Canaryを使う場合、Istioと[Prometheus](../../platform/monitoring/prometheus/README.md)を用意する。
 3. このリポジトリの変更をmainへpushし、GitHub Actionsが/errorを含む新しいイメージをGHCRへ公開したことを確認する。
 4. base/kustomization.yamlのnewTagを、そのイメージをビルドしたコミットSHAへ変更してpushする。
 5. このArgo CD Applicationを一度登録する。

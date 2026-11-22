@@ -1,0 +1,197 @@
+# Prometheus、Node Exporter、kube-state-metrics を導入する。アラート通知は後の段階で追加する。
+alertmanager:
+  enabled: false
+
+kube-state-metrics:
+  enabled: true
+
+prometheus-node-exporter:
+  enabled: true
+
+prometheus-pushgateway:
+  enabled: false
+
+# Prometheus server の既定 ClusterRole は使わず、Pod discovery 権限を namespace 単位で付与する。
+# monitoring namespace の Role は Node Exporter と kube-state-metrics の Pod discovery に使う。
+# kube-state-metrics 自身の API 読み取り用 ClusterRole はサブチャートが別途作成する。
+rbac:
+  create: false
+
+serviceAccounts:
+  server:
+    create: true
+    name: prometheus
+
+server:
+  # 既存の AnalysisTemplate が参照する Service 名を維持する。
+  fullnameOverride: prometheus
+  global:
+    scrape_interval: 15s
+    evaluation_interval: 15s
+  service:
+    enabled: true
+    type: ClusterIP
+    servicePort: 9090
+
+# chart 標準の scrape job は無効にし、必要な対象だけ明示的に収集する。
+scrapeConfigs: null
+
+serverFiles:
+  prometheus.yml:
+    scrape_configs:
+      - job_name: istio-proxies
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - istio-system
+                - progressive-delivery
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_container_name
+            action: keep
+            regex: istio-proxy
+          - source_labels:
+              - __meta_kubernetes_pod_container_port_number
+            action: keep
+            regex: "15090"
+          - source_labels:
+              - __address__
+            action: replace
+            regex: ([^:]+)(?::\d+)?
+            replacement: $1:15090
+            target_label: __address__
+          - action: replace
+            target_label: __metrics_path__
+            replacement: /stats/prometheus
+          - source_labels:
+              - __meta_kubernetes_pod_name
+            target_label: pod
+          - source_labels:
+              - __meta_kubernetes_namespace
+            target_label: namespace
+      - job_name: node-exporter
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - monitoring
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_container_name
+            action: keep
+            regex: node-exporter
+          - source_labels:
+              - __meta_kubernetes_pod_container_port_number
+            action: keep
+            regex: "9100"
+          - source_labels:
+              - __meta_kubernetes_pod_node_name
+            target_label: node
+          - source_labels:
+              - __meta_kubernetes_pod_name
+            target_label: pod
+      - job_name: kube-state-metrics
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - monitoring
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_container_name
+            action: keep
+            regex: kube-state-metrics
+          - source_labels:
+              - __meta_kubernetes_pod_container_port_number
+            action: keep
+            regex: "8080"
+      - job_name: hello-world-app
+        metrics_path: /metrics
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - hello-world
+                - progressive-delivery
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_container_name
+            action: keep
+            regex: hello-world
+          - source_labels:
+              - __meta_kubernetes_pod_container_port_number
+            action: keep
+            regex: "8080"
+          - source_labels:
+              - __meta_kubernetes_namespace
+            target_label: namespace
+          - source_labels:
+              - __meta_kubernetes_pod_name
+            target_label: pod
+          - source_labels:
+              - __meta_kubernetes_pod_node_name
+            target_label: node
+
+# Prometheus の Pod discovery 権限は、収集対象の namespace ごとに付与する。
+# kube-state-metrics 自身の read-only な Kubernetes API 権限は、サブチャートが別途作成する。
+# progressive-delivery namespace 側の権限は Argo CD が適用する Kustomize base が管理する。
+extraManifests:
+  - |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: prometheus-pod-discovery
+      namespace: istio-system
+    rules:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - get
+          - list
+          - watch
+  - |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: prometheus-pod-discovery
+      namespace: istio-system
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: prometheus-pod-discovery
+    subjects:
+      - kind: ServiceAccount
+        name: prometheus
+        namespace: monitoring
+  - |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: prometheus-node-discovery
+      namespace: monitoring
+    rules:
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - get
+          - list
+          - watch
+  - |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      name: prometheus-node-discovery
+      namespace: monitoring
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: prometheus-node-discovery
+    subjects:
+      - kind: ServiceAccount
+        name: prometheus
+        namespace: monitoring

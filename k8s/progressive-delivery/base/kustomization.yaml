@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - rollout.yaml
+  - prometheus-pod-discovery.yaml
 images:
   - name: ghcr.io/ose20/cloud-native-app-cicd-demo
     newTag: "v0.1.2"

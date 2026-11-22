@@ -4,7 +4,6 @@ resources:
   - ../../base
   - analysis-template.yaml
   - gateway.yaml
-  - istio-pod-discovery.yaml
   - mesh-virtual-service.yaml
   - services.yaml
   - virtual-service.yaml

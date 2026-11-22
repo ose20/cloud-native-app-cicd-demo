@@ -16,7 +16,11 @@ mise exec -- go test -v ./...
 mise exec -- go run .
 ```
 
-`http://localhost:8080/` にアクセスすると、ローカル実行では `hello world: dev` を返します。`/error` はプログレッシブデリバリの失敗確認用に `503 Service Unavailable` を返します。
+`http://localhost:8080/` にアクセスすると、ローカル実行では `hello world: dev` を返します。`/error` はプログレッシブデリバリの失敗確認用に `503 Service Unavailable` を返し、`/metrics` は Prometheus 用のアプリケーション指標を返します。
+
+```bash
+curl http://localhost:8080/metrics
+```
 
 ### コンテナイメージのビルドと実行
 
@@ -160,13 +164,14 @@ curl http://localhost:18080/
 
 GitHub Actions は `main` への push ごとにコミット SHA タグのイメージを GHCR へ公開します。CI の成功後、[`k8s/overlays/kind/kustomization.yaml`](k8s/overlays/kind/kustomization.yaml) の `newTag` を、公開済みイメージのコミット SHA に変更して push します。Argo CD が Git の変更を検出し、新しいイメージへ Deployment を更新します。
 
-CI はイメージを公開しますが、Kustomize のタグは自動更新しません。どのイメージをデプロイするかも Git の変更として管理するためです。
+CI はイメージを公開しますが、Kustomize のタグは自動更新しません。どのイメージをデプロイするかも Git の変更として管理するためです。アプリを変更した場合は、公開済み SHA を [`k8s/overlays/kind/kustomization.yaml`](k8s/overlays/kind/kustomization.yaml) と [`k8s/progressive-delivery/base/kustomization.yaml`](k8s/progressive-delivery/base/kustomization.yaml) の `newTag` に指定します。
 
 ## 8.1 Argo Rolloutsによるプログレッシブデリバリ
 
 sec8ではArgo Rolloutsのコントローラーをクラスタへ一度だけ導入し、アプリのリリースごとにGitでイメージtagを更新します。CanaryとBlueGreenは、同じArgo CD Applicationが参照するoverlayを切り替えて試します。
 
-- [Argo Rolloutsのセットアップ](platform/argo-rollouts/README.md): mise CLI、Helmfileによるコントローラー導入、Canary用Prometheusの初回登録
+- [Argo Rolloutsのセットアップ](platform/argo-rollouts/README.md): mise CLI、Helmfileによるコントローラー導入とCanary用Prometheusの準備
+- [Prometheusのセットアップ](platform/monitoring/prometheus/README.md): Helm chartとHelmfileによる導入、dev/prodのvalues設定
 - [CanaryとBlueGreenのデプロイ手順](k8s/progressive-delivery/README.md): Application登録、方式の選択、イメージ更新、リリース時の確認
 
 コントローラー・CRD・Prometheus・Argo CD Applicationの登録は初回だけ行います。通常のアプリリリースでは、Actionsが公開したSHA tagをKustomizeへ記録してpushします。方式を切り替えるときだけ、Argo CD Applicationの監視先overlayを変更します。
